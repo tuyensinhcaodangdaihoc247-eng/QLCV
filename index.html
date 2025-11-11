@@ -1,0 +1,2264 @@
+<!DOCTYPE html>
+<html lang="vi" style="height: 100%;">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hệ thống Quản lý Công việc</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* CSS TOÀN BỘ HỆ THỐNG */
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --info: #4895ef;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --sidebar-width: 250px;
+            --header-height: 60px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* FIX 1: Đảm bảo HTML và BODY chiếm trọn màn hình */
+        body {
+            background-color: #f4f7f6;
+            color: var(--dark);
+            line-height: 1.6;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* -------------------------- UTILITIES & BADGES -------------------------- */
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .text-center { text-align: center; }
+        .flex { display: flex; }
+        .flex-grow { flex-grow: 1; }
+        .justify-between { justify-content: space-between; }
+        .items-center { align-items: center; }
+        .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; }
+        .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .mt-4 { margin-top: 20px; }
+        .mb-4 { margin-bottom: 20px; }
+        .py-2 { padding-top: 10px; padding-bottom: 10px; }
+        .p-4 { padding: 20px; }
+        .rounded-lg { border-radius: 8px; }
+        .shadow-md { box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); }
+        .bg-white { background-color: #fff; }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-primary:hover { background-color: var(--secondary); }
+        .btn-danger { background-color: var(--danger); color: white; }
+        .btn-danger:hover { background-color: #c41e6b; }
+        .btn-success { background-color: var(--success); color: var(--dark); }
+        .btn-success:hover { background-color: #38b4d8; }
+        .btn-icon { padding: 8px 12px; }
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 500; color: #555; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            transition: border-color 0.3s;
+        }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-new { background-color: #cce7ff; color: #007bff; }
+        .status-inprogress { background-color: #fff4cc; color: #ff8c00; }
+        .status-pending_approval { background-color: #d1c4e9; color: #673ab7; }
+        .status-completed { background-color: #d0f0c0; color: #38761d; }
+        .status-overdue { background-color: #f7a2a2; color: #a00000; }
+        .status-pending { background-color: #eee; color: #555; }
+
+        .priority-low { color: var(--info); }
+        .priority-medium { color: var(--warning); }
+        .priority-high { color: var(--danger); }
+
+        /* ************************************************** */
+        /* CSS CHO GIAO DIỆN BÁO CÁO & DASHBOARD */
+        /* ************************************************** */
+        .approval-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+            font-size: 14px;
+        }
+        .approval-item:last-child {
+            border-bottom: none;
+        }
+        .approval-item span {
+            color: var(--dark);
+            font-weight: 500;
+            flex-grow: 1;
+            padding-right: 10px;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* CSS MỚI CHO PHẦN BÁO CÁO */
+        #reportsPage .chart-container,
+        #dashboardPage .chart-container {
+            height: 300px;
+            position: relative;
+        }
+        
+        #reportsPage .grid-4,
+        #dashboardPage .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        #reportsPage .grid-2,
+        #dashboardPage .grid-2 {
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+        }
+        
+        #reportsPage .stat-card,
+        #dashboardPage .stat-card {
+            min-height: 100px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        #reportsPage .stat-card-value,
+        #dashboardPage .stat-card-value {
+            font-size: 24px;
+        }
+        
+        #reportsPage .data-table {
+            font-size: 14px;
+        }
+        
+        #reportsPage .data-table th,
+        #reportsPage .data-table td {
+            padding: 10px 12px;
+        }
+        
+        /* Responsive cho mobile */
+        @media (max-width: 768px) {
+            #reportsPage .grid-4,
+            #dashboardPage .grid-4 {
+                grid-template-columns: 1fr 1fr;
+            }
+            
+            #reportsPage .grid-2,
+            #dashboardPage .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            #reportsPage .chart-container,
+            #dashboardPage .chart-container {
+                height: 250px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #reportsPage .grid-4,
+            #dashboardPage .grid-4 {
+                grid-template-columns: 1fr;
+            }
+            
+            #reportsPage .stat-card-value,
+            #dashboardPage .stat-card-value {
+                font-size: 20px;
+            }
+        }
+        /* ************************************************** */
+
+        /* -------------------------- LOGIN SCREEN -------------------------- */
+        #loginScreen {
+            min-height: 100vh;
+            background-color: #eef1f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-box {
+            background-color: white;
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 400px;
+        }
+
+        .role-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .role-card {
+            padding: 20px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .role-card.active-role {
+            border-color: var(--primary);
+            background-color: var(--primary);
+            color: white;
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+        .role-card i { font-size: 28px; margin-bottom: 10px; }
+        .role-card.active-role i { color: white; }
+
+        /* -------------------------- APP LAYOUT -------------------------- */
+        .app-layout {
+            min-height: 100vh;
+            display: grid; 
+            grid-template-columns: var(--sidebar-width) 1fr;
+            grid-template-rows: var(--header-height) 1fr;
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+        }
+        
+        /* -------------------------- SIDEBAR (MANAGER & EMPLOYEE) -------------------------- */
+        .sidebar {
+            grid-row: 1 / 3;
+            background-color: var(--dark);
+            color: white;
+            padding: 20px 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-logo {
+            text-align: center;
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 30px;
+            padding: 0 20px;
+            color: var(--primary);
+        }
+
+        .sidebar-nav ul {
+            list-style: none;
+        }
+
+        .sidebar-nav a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: #ccc;
+            text-decoration: none;
+            transition: background-color 0.3s, color 0.3s;
+            font-weight: 500;
+        }
+
+        .sidebar-nav a:hover, .sidebar-nav a.active {
+            background-color: var(--secondary);
+            color: white;
+        }
+
+        .sidebar-nav a i {
+            margin-right: 10px;
+            width: 20px;
+        }
+        
+        /* -------------------------- HEADER (MANAGER & EMPLOYEE) -------------------------- */
+        .header {
+            grid-column: 2 / 3;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            background-color: var(--info);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-left: 10px;
+            text-transform: uppercase;
+        }
+        
+        /* -------------------------- MAIN CONTENT -------------------------- */
+        .main-content {
+            grid-column: 2 / 3;
+            padding: 20px;
+            overflow-y: auto;
+            min-height: calc(100vh - var(--header-height)); 
+        }
+
+        /* Ẩn các trang, chỉ hiện trang active */
+        .page {
+            display: none;
+        }
+        .page.active {
+            display: block;
+        }
+
+        /* -------------------------- DASHBOARD (CHUNG) -------------------------- */
+        .stat-card {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            border-left: 5px solid;
+            transition: transform 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+        }
+        .stat-card-title {
+            font-size: 14px;
+            color: #777;
+            text-transform: uppercase;
+            margin-bottom: 5px;
+        }
+        .stat-card-value {
+            font-size: 30px;
+            font-weight: 700;
+            color: var(--dark);
+        }
+        .stat-card-primary { border-color: var(--primary); }
+        .stat-card-success { border-color: var(--success); }
+        .stat-card-danger { border-color: var(--danger); }
+        .stat-card-info { border-color: var(--info); }
+
+        .chart-container {
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        /* -------------------------- TABLES -------------------------- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        .data-table th, .data-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #eee;
+            text-align: left;
+        }
+        .data-table th {
+            background-color: #f8f8f8;
+            font-weight: 600;
+            color: #555;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        .data-table tr:hover {
+            background-color: #fcfcfc;
+        }
+
+        /* -------------------------- TASK LIST (TEAM & MY) -------------------------- */
+        .task-tabs {
+            display: flex;
+            border-bottom: 2px solid #eee;
+            margin-bottom: 20px;
+        }
+
+        .task-tabs button {
+            background: none;
+            border: none;
+            padding: 10px 15px;
+            margin-right: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            color: #555;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+        }
+
+        .task-tabs button.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        /* -------------------------- EMPLOYEE MANAGEMENT -------------------------- */
+        .employee-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        .employee-card {
+            padding: 20px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        .employee-avatar {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 10px;
+            font-size: 24px;
+        }
+
+        .employee-name {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        .employee-position {
+            color: #777;
+            font-size: 14px;
+        }
+        .employee-actions {
+            margin-top: 15px;
+        }
+        .employee-actions button {
+            margin: 0 5px;
+        }
+
+        /* -------------------------- WEEKLY PLAN (EMPLOYEE) -------------------------- */
+        .weekly-calendar-header {
+            background-color: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            background-color: white;
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+            border: 1px solid #eee;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            padding: 10px 5px;
+            font-weight: 600;
+            background-color: #f8f8f8;
+            border-right: 1px solid #eee;
+        }
+        .calendar-day-header:last-child { border-right: none; }
+
+        .calendar-day {
+            min-height: 120px;
+            padding: 10px;
+            border-right: 1px solid #eee;
+            border-top: 1px solid #eee;
+        }
+        .calendar-day:last-child { border-right: none; }
+
+        .day-label {
+            font-weight: 700;
+            margin-bottom: 5px;
+            font-size: 18px;
+        }
+        .day-label.today {
+            color: var(--primary);
+        }
+
+        .weekly-task {
+            background-color: var(--info);
+            color: white;
+            padding: 5px 8px;
+            border-radius: 4px;
+            margin-bottom: 5px;
+            font-size: 12px;
+            cursor: pointer;
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        /* -------------------------- MODAL -------------------------- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0,0,0,0.4);
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background-color: #fefefe;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            width: 90%;
+            max-width: 600px;
+            position: relative;
+        }
+
+        .close-btn {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body style="height: 100%;"> 
+
+    <div id="loginScreen">
+        <div class="login-box">
+            <h2 class="text-center" style="color: var(--primary); margin-bottom: 30px;">HỆ THỐNG QLCV</h2>
+            <div id="roleSelector" class="role-selector">
+                <div class="role-card" data-role="manager">
+                    <i class="fas fa-user-tie"></i>
+                    <p>Trưởng phòng</p>
+                </div>
+                <div class="role-card active-role" data-role="employee">
+                    <i class="fas fa-user"></i>
+                    <p>Nhân viên</p>
+                </div>
+            </div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Tên đăng nhập</label>
+                    <input type="text" id="username" value="user" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mật khẩu</label>
+                    <input type="password" id="password" value="123" required>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Đăng nhập</button>
+            </form>
+            <p class="text-center" style="font-size: 12px; margin-top: 20px; color: #777;">*Thử: **manager/123** hoặc **user/123**</p>
+        </div>
+    </div>
+
+    <div id="managerApp" class="app-layout" style="display: none;">
+        <div class="sidebar">
+            <div class="sidebar-logo">QLCV Manager</div>
+            <nav class="sidebar-nav">
+                <ul id="managerMenu">
+                    <li><a href="#" data-page="dashboardPage" class="active"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    <li><a href="#" data-page="teamTasksPage"><i class="fas fa-tasks"></i> Công việc phòng ban</a></li>
+                    <li><a href="#" data-page="assignTasksPage"><i class="fas fa-handshake"></i> Giao việc</a></li>
+                    <li><a href="#" data-page="approvalsPage"><i class="fas fa-check-circle"></i> Duyệt công việc</a></li>
+                    <li><a href="#" data-page="employeesPage"><i class="fas fa-users"></i> Quản lý nhân viên</a></li>
+                    <li><a href="#" data-page="reportsPage"><i class="fas fa-file-alt"></i> Báo cáo</a></li>
+                </ul>
+            </nav>
+            <div style="margin-top: auto; padding: 0 20px;">
+                <a href="#" id="logoutBtn" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+            </div>
+        </div>
+
+        <header class="header">
+            <h1 id="pageTitle" class="header-title">Dashboard</h1>
+            <div class="user-profile">
+                <span id="managerHeaderName">Trần Văn B</span>
+                <div id="managerHeaderAvatar" class="user-avatar">TB</div>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section id="dashboardPage" class="page active">
+                <div id="managerStats" class="grid-4">
+                    <div class="stat-card stat-card-primary">
+                        <div class="stat-card-title">Tổng công việc</div>
+                        <div id="totalTasks" class="stat-card-value">12</div>
+                    </div>
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-card-title">Đã hoàn thành</div>
+                        <div id="completedTasks" class="stat-card-value">5</div>
+                    </div>
+                    <div class="stat-card stat-card-danger">
+                        <div class="stat-card-title">Trễ hạn</div>
+                        <div id="overdueTasks" class="stat-card-value">2</div>
+                    </div>
+                    <div class="stat-card stat-card-info">
+                        <div class="stat-card-title">Tổng nhân viên</div>
+                        <div id="totalEmployees" class="stat-card-value">5</div>
+                    </div>
+                </div>
+
+                <div class="grid-2 mt-4">
+                    <div class="chart-container">
+                        <h2>Hiệu suất Nhân viên</h2>
+                        <canvas id="employeePerformanceChart"></canvas> 
+                    </div>
+                    <div class="chart-container">
+                        <h2>Công việc Chờ duyệt</h2>
+                        <div id="approvalTasksList" style="margin-top: 10px;">
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="teamTasksPage" class="page">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2>Công việc toàn bộ phòng ban</h2>
+                    <div class="task-tabs" id="teamTaskTabs">
+                        <button class="active" data-filter="all">Tất cả</button>
+                        <button data-filter="pending_approval">Chờ duyệt</button>
+                        <button data-filter="inprogress">Đang thực hiện</button>
+                        <button data-filter="completed">Đã hoàn thành</button>
+                        <button data-filter="overdue">Trễ hạn</button>
+                        <button data-filter="pending">Chưa bắt đầu</button>
+                    </div>
+                    <div style="height: 300px;"><canvas id="teamTaskDistributionChart"></canvas></div>
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Tiêu đề</th>
+                                    <th>Người thực hiện</th>
+                                    <th>Hạn chót</th>
+                                    <th>Ưu tiên</th>
+                                    <th>Tiến độ</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamTasksTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <section id="assignTasksPage" class="page">
+                <div class="bg-white p-4 rounded-lg shadow-md" style="max-width: 700px; margin: 0 auto;">
+                    <h2>Giao việc mới</h2>
+                    <form id="assignTaskForm">
+                        <div class="form-group">
+                            <label for="taskTitle">Tiêu đề công việc</label>
+                            <input type="text" id="taskTitle" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="taskDescription">Mô tả</label>
+                            <textarea id="taskDescription" rows="3"></textarea>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="taskAssignee">Người thực hiện</label>
+                                <select id="taskAssignee" required>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="taskPriority">Độ ưu tiên</label>
+                                <select id="taskPriority" required>
+                                    <option value="low">Thấp</option>
+                                    <option value="medium">Trung bình</option>
+                                    <option value="high">Cao</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="grid-2">
+                            <div class="form-group">
+                                <label for="taskStartDate">Ngày bắt đầu</label>
+                                <input type="date" id="taskStartDate" required>
+                            </div>
+                            <div class="form-group">
+                                <label for="taskDueDate">Hạn chót</label>
+                                <input type="date" id="taskDueDate" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%;">Giao việc</button>
+                    </form>
+                </div>
+            </section>
+
+            <section id="approvalsPage" class="page">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2>Duyệt công việc hoàn thành</h2>
+                    <div class="task-tabs" id="approvalTabs">
+                        <button class="active" data-filter="pending">Chờ duyệt (<span id="pendingApprovalCount">0</span>)</button>
+                        <button data-filter="approved">Đã duyệt</button>
+                    </div>
+                    
+                    <div id="pendingApprovalsList">
+                    </div>
+                    <div id="approvedTasksList" style="display: none;">
+                    </div>
+                </div>
+            </section>
+
+            <section id="employeesPage" class="page">
+                <div class="flex justify-between items-center mb-4">
+                    <h2>Danh sách Nhân viên</h2>
+                    <button class="btn btn-primary" id="addEmployeeBtn"><i class="fas fa-user-plus"></i> Thêm Nhân viên</button>
+                </div>
+                <div id="employeeList" class="employee-list">
+                </div>
+            </section>
+
+            <section id="reportsPage" class="page">
+                <h2>Báo cáo Hiệu suất Phòng ban</h2>
+                
+                <div id="reportSummaryStats" class="grid-4 mt-4">
+                </div>
+
+                <div class="grid-2 mt-4">
+                    <div class="chart-container">
+                        <h3>Hiệu suất hoàn thành</h3>
+                        <canvas id="departmentPerformanceChart"></canvas>
+                    </div>
+                    <div class="chart-container">
+                        <h3>Phân bổ công việc theo Ưu tiên</h3>
+                        <canvas id="taskDistributionChart"></canvas>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <h3>Thống kê Chi tiết</h3>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Tên nhân viên</th>
+                                <th>Tổng CV</th>
+                                <th>Đã hoàn thành</th>
+                                <th>Trễ hạn</th>
+                                <th>Tỷ lệ HT</th>
+                            </tr>
+                        </thead>
+                        <tbody id="performanceTable">
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="employeeApp" class="app-layout" style="display: none;">
+         <div class="sidebar">
+            <div class="sidebar-logo">QLCV Employee</div>
+            <nav class="sidebar-nav">
+                <ul id="employeeMenu">
+                    <li><a href="#" data-page="empDashboardPage" class="active"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+                    <li><a href="#" data-page="empMyTasksPage"><i class="fas fa-clipboard-list"></i> Công việc của tôi</a></li>
+                    <li><a href="#" data-page="empWeeklyPlanPage"><i class="fas fa-calendar-alt"></i> Kế hoạch tuần</a></li>
+                    <li><a href="#" data-page="empProfilePage"><i class="fas fa-user-circle"></i> Hồ sơ</a></li>
+                </ul>
+            </nav>
+            <div style="margin-top: auto; padding: 0 20px;">
+                <a href="#" id="empLogoutBtn" style="color: var(--danger);"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+            </div>
+        </div>
+
+        <header class="header">
+            <h1 id="empPageTitle" class="header-title">Dashboard</h1>
+            <div class="user-profile">
+                <span id="empHeaderName">Nguyễn Văn A</span>
+                <div id="empHeaderAvatar" class="user-avatar">NA</div>
+                <span id="empHeaderPosition" style="margin-left: 10px; color: #555;">Nhân viên IT</span>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <section id="empDashboardPage" class="page active">
+                <div id="employeeStats" class="grid-4">
+                    <div class="stat-card stat-card-primary">
+                        <div class="stat-card-title">Tổng công việc</div>
+                        <div id="empTotalTasks" class="stat-card-value">12</div>
+                    </div>
+                    <div class="stat-card stat-card-success">
+                        <div class="stat-card-title">Đã hoàn thành</div>
+                        <div id="empCompletedTasks" class="stat-card-value">5</div>
+                    </div>
+                    <div class="stat-card stat-card-danger">
+                        <div class="stat-card-title">Trễ hạn</div>
+                        <div id="empOverdueTasks" class="stat-card-value">2</div>
+                    </div>
+                    <div class="stat-card stat-card-info">
+                        <div class="stat-card-title">Đang thực hiện</div>
+                        <div id="empInProgressTasks" class="stat-card-value">5</div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-lg shadow-md mt-4">
+                    <h2>Công việc gần đây</h2>
+                    <div id="empRecentTasks">
+                    </div>
+                </div>
+            </section>
+
+            <section id="empMyTasksPage" class="page">
+                <div class="bg-white p-4 rounded-lg shadow-md">
+                    <h2>Công việc của tôi</h2>
+                    <div class="task-tabs" id="empMyTaskTabs">
+                        <button class="active" data-filter="all">Tất cả</button>
+                        <button data-filter="inprogress">Đang thực hiện</button>
+                        <button data-filter="pending_approval">Chờ duyệt</button>
+                        <button data-filter="completed">Đã hoàn thành</button>
+                    </div>
+                    
+                    <div style="overflow-x: auto;">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Tiêu đề</th>
+                                    <th>Hạn chót</th>
+                                    <th>Ưu tiên</th>
+                                    <th>Tiến độ</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="empMyTasksTable">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <section id="empWeeklyPlanPage" class="page">
+                <div class="bg-white rounded-lg shadow-md">
+                    <div class="weekly-calendar-header">
+                        <button class="btn btn-primary btn-icon" id="prevWeekBtn"><i class="fas fa-chevron-left"></i></button>
+                        <h3 id="currentWeekDisplay">Tuần hiện tại: 20/10 - 26/10</h3>
+                        <button class="btn btn-primary btn-icon" id="nextWeekBtn"><i class="fas fa-chevron-right"></i></button>
+                    </div>
+                    <div class="calendar-grid" id="weeklyCalendar">
+                        <div class="calendar-day-header">Thứ Hai</div>
+                        <div class="calendar-day-header">Thứ Ba</div>
+                        <div class="calendar-day-header">Thứ Tư</div>
+                        <div class="calendar-day-header">Thứ Năm</div>
+                        <div class="calendar-day-header">Thứ Sáu</div>
+                        <div class="calendar-day-header">Thứ Bảy</div>
+                        <div class="calendar-day-header">Chủ Nhật</div>
+                    </div>
+                </div>
+                <div class="text-center mt-4">
+                     <button class="btn btn-primary" id="addPlanTaskBtn"><i class="fas fa-plus"></i> Thêm công việc cá nhân</button>
+                </div>
+            </section>
+            
+            <section id="empProfilePage" class="page">
+                <div class="bg-white p-4 rounded-lg shadow-md" style="max-width: 700px; margin: 0 auto;">
+                    <h2>Hồ sơ cá nhân</h2>
+                    <div class="text-center mb-4">
+                        <div id="profileEmpAvatar" class="user-avatar" style="width: 80px; height: 80px; font-size: 36px; margin: 0 auto;">NA</div>
+                        <h3 id="profileEmpName" style="margin-top: 10px;">Nguyễn Văn A</h3>
+                        <p id="profileEmpPosition" class="text-secondary">Nhân viên phát triển</p>
+                    </div>
+                    
+                    <form id="profileForm">
+                        <div class="form-group">
+                            <label for="profileEmpUsername">Tên đăng nhập</label>
+                            <input type="text" id="profileEmpUsername" value="user" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmpEmail">Email</label>
+                            <input type="email" id="profileEmpEmail" value="nguyenvana@company.com" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmpPhone">Số điện thoại</label>
+                            <input type="text" id="profileEmpPhone" value="0987 654 321" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmpTeam">Phòng ban</label>
+                            <input type="text" id="profileEmpTeam" value="IT Development" disabled>
+                        </div>
+                        <div class="form-group">
+                            <label for="profileEmpPerformance">Hiệu suất hoàn thành</label>
+                            <input type="text" id="profileEmpPerformance" value="80%" disabled style="font-weight: bold; color: var(--success);">
+                        </div>
+                    </form>
+                    
+                    <button class="btn btn-primary" style="width: 100%;" disabled>Cập nhật hồ sơ (Chức năng bị khóa)</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('taskModal').style.display='none'">&times;</span>
+            <h2 id="modalTaskTitle" style="color: var(--primary); margin-bottom: 10px;">Chi tiết Công việc</h2>
+            <p style="margin-bottom: 15px;"><span id="modalTaskStatus" class="status-badge status-inprogress">Đang thực hiện</span></p>
+
+            <div class="grid-2" style="margin-bottom: 15px;">
+                <div><strong>Người giao:</strong> <span id="modalTaskManager">Trần Văn B</span></div>
+                <div><strong>Người thực hiện:</strong> <span id="modalTaskAssignee">Nguyễn Văn A</span></div>
+            </div>
+            <div class="grid-2" style="margin-bottom: 15px;">
+                <div><strong>Hạn chót:</strong> <span id="modalTaskDueDate" style="color: var(--danger);">25/10/2025</span></div>
+                <div><strong>Độ ưu tiên:</strong> <span id="modalTaskPriority" class="priority-high">Cao</span></div>
+            </div>
+            
+            <p><strong>Mô tả:</strong></p>
+            <p id="modalTaskDescription" style="margin-bottom: 20px; border-left: 3px solid #eee; padding-left: 10px;"></p>
+            
+            <div class="form-group">
+                <label for="modalTaskProgress">Tiến độ (<span id="progressValue">0</span>%)</label>
+                <input type="range" id="modalTaskProgress" min="0" max="100" value="0" step="5" style="width: 100%;">
+            </div>
+            
+            <div id="modalActions" class="flex justify-between mt-4">
+                <button class="btn btn-danger" id="modalRejectBtn" style="display: none;">Từ chối</button>
+                <button class="btn btn-success" id="modalApproveBtn" style="display: none;">Duyệt</button>
+                <button class="btn btn-primary" id="modalUpdateBtn" style="display: none;">Cập nhật Tiến độ</button>
+                <button class="btn btn-success" id="modalCompleteBtn" style="display: none;">Hoàn thành</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="employeeModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('employeeModal').style.display='none'">&times;</span>
+            <h2 id="employeeModalTitle" style="color: var(--primary); margin-bottom: 20px;">Thêm Nhân viên</h2>
+            <form id="employeeForm">
+                <input type="hidden" id="empId" value="">
+                <div class="form-group">
+                    <label for="empName">Tên Nhân viên</label>
+                    <input type="text" id="empName" required>
+                </div>
+                 <div class="grid-2">
+                    <div class="form-group">
+                        <label for="empUsername">Tên đăng nhập *</label>
+                        <input type="text" id="empUsername" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="empPassword">Mật khẩu *</label>
+                        <input type="password" id="empPassword">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="empPosition">Vị trí/Chức danh</label>
+                    <input type="text" id="empPosition" required>
+                </div>
+                <div class="form-group">
+                    <label for="empEmail">Email</label>
+                    <input type="email" id="empEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="empPhone">Số điện thoại</label>
+                    <input type="text" id="empPhone">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;" id="saveEmployeeBtn">Lưu Nhân viên</button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="planTaskModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('planTaskModal').style.display='none'">&times;</span>
+            <h2 style="color: var(--primary); margin-bottom: 20px;">Thêm Kế hoạch Cá nhân</h2>
+            <form id="planTaskForm">
+                <div class="form-group">
+                    <label for="planTitle">Tiêu đề công việc/Kế hoạch</label>
+                    <input type="text" id="planTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="planDescription">Mô tả</label>
+                    <textarea id="planDescription" rows="2"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="planStartDate">Ngày bắt đầu</label>
+                        <input type="date" id="planStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="planDueDate">Ngày kết thúc (Dự kiến)</label>
+                        <input type="date" id="planDueDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Lưu Kế hoạch</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="editTaskModal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="document.getElementById('editTaskModal').style.display='none'">&times;</span>
+            <h2 style="color: var(--primary); margin-bottom: 20px;">Sửa Công việc</h2>
+            <form id="editTaskForm">
+                <input type="hidden" id="editTaskId" required>
+                <div class="form-group">
+                    <label for="editTaskTitle">Tiêu đề công việc</label>
+                    <input type="text" id="editTaskTitle" required>
+                </div>
+                <div class="form-group">
+                    <label for="editTaskDescription">Mô tả</label>
+                    <textarea id="editTaskDescription" rows="3"></textarea>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="editTaskAssignee">Người thực hiện</label>
+                        <select id="editTaskAssignee" required>
+                            </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskPriority">Độ ưu tiên</label>
+                        <select id="editTaskPriority" required>
+                            <option value="low">Thấp</option>
+                            <option value="medium">Trung bình</option>
+                            <option value="high">Cao</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="editTaskStartDate">Ngày bắt đầu</label>
+                        <input type="date" id="editTaskStartDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTaskDueDate">Hạn chót</label>
+                        <input type="date" id="editTaskDueDate" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 15px;">Lưu Thay đổi Công việc</button>
+            </form>
+        </div>
+    </div>
+    <script>
+        // **********************************************
+        // 1. CẤU HÌNH BAN ĐẦU (Dữ liệu giả)
+        // **********************************************
+        const getManagerInfo = () => TEAM_MEMBERS.find(m => m.role === 'manager');
+        const getUserById = (id) => TEAM_MEMBERS.find(m => m.id === id);
+
+        const TEAM_MEMBERS = [
+            { id: 100, name: 'Trần Văn B', initials: 'TB', role: 'manager', position: 'Trưởng phòng IT', email: 'tranvanb@company.com', phone: '0901 234 567', username: 'manager', password: '123' },
+            { id: 101, name: 'Nguyễn Văn A', initials: 'NA', role: 'employee', position: 'Nhân viên phát triển', email: 'nguyenvana@company.com', phone: '0987 654 321', username: 'user', password: '123' },
+            { id: 102, name: 'Phạm Thị C', initials: 'PC', role: 'employee', position: 'Kiểm thử viên', email: 'phamthic@company.com', phone: '0912 345 678', username: 'userc', password: '123' },
+            { id: 103, name: 'Hoàng Văn D', initials: 'HD', role: 'employee', position: 'Thiết kế giao diện', email: 'hoangvand@company.com', phone: '0945 678 901', username: 'userd', password: '123' },
+            { id: 104, name: 'Lê Thị E', initials: 'LE', role: 'employee', position: 'Hỗ trợ kỹ thuật', email: 'lethie@company.com', phone: '0978 901 234', username: 'usere', password: '123' },
+        ];
+
+        let CURRENT_USER = null;
+        let CURRENT_USER_ROLE = 'employee';
+        let WEEK_OFFSET = 0;
+        let TASK_ID_COUNTER = 105;
+
+        let TASK_DATA = [
+            { id: 101, title: "Thiết kế giao diện trang Dashboard", description: "Sử dụng Figma/Sketch để hoàn thiện bản thiết kế Dashboard cho cả 2 vai trò Manager và Employee.", assigneeId: 103, assigneeName: "Hoàng Văn D", startDate: "2025-10-20", dueDate: "2025-10-22", priority: "high", status: "completed", progress: 100, managerApproval: true },
+            { id: 102, title: "Triển khai tính năng đăng nhập hệ thống", description: "Sử dụng JavaScript để xử lý form và chuyển đổi giao diện.", assigneeId: 101, assigneeName: "Nguyễn Văn A", startDate: "2025-10-26", dueDate: "2025-10-30", priority: "medium", status: "inprogress", progress: 60, managerApproval: false },
+            { id: 103, title: "Nghiên cứu công nghệ VueJS", description: "Tìm hiểu và viết báo cáo ngắn về ưu nhược điểm của VueJS.", assigneeId: 101, assigneeName: "Nguyễn Văn A", startDate: "2025-11-01", dueDate: "2025-11-05", priority: "low", status: "pending", progress: 0, managerApproval: false },
+            { id: 104, title: "Kiểm thử tính năng Giao việc (Manager)", description: "Đảm bảo form giao việc hoạt động đúng, dữ liệu được lưu chính xác.", assigneeId: 102, assigneeName: "Phạm Thị C", startDate: "2025-10-20", dueDate: "2025-10-22", priority: "high", status: "overdue", progress: 90, managerApproval: false },
+            { id: 105, title: "Tạo biểu tượng cho các mục Sidebar", description: "Tìm và áp dụng icon phù hợp cho tất cả các menu chức năng.", assigneeId: 103, assigneeName: "Hoàng Văn D", startDate: "2025-10-24", dueDate: "2025-10-24", priority: "medium", status: "pending_approval", progress: 100, managerApproval: false },
+        ];
+
+        // Biến toàn cục để lưu trữ các instance của biểu đồ Chart.js
+        let employeePerformanceChartInstance = null;
+        let departmentPerformanceChartInstance = null;
+        let taskDistributionChartInstance = null;
+        let teamTaskDistributionChartInstance = null;
+
+        // **********************************************
+        // 2. CÁC HÀM TIỆN ÍCH
+        // **********************************************
+        const getStatusClass = (status) => `status-${status}`;
+        const getStatusBadge = (status) => {
+            const statusMap = {
+                new: 'Mới',
+                inprogress: 'Đang thực hiện',
+                pending_approval: 'Chờ duyệt',
+                completed: 'Hoàn thành',
+                overdue: 'Trễ hạn',
+                pending: 'Chưa bắt đầu'
+            };
+            return `<span class="status-badge ${getStatusClass(status)}">${statusMap[status] || status}</span>`;
+        };
+        const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const [year, month, day] = dateString.split('-');
+            return `${day}/${month}/${year}`;
+        };
+
+        // **********************************************
+        // 3. LOGIC CHUYỂN ĐỔI GIAO DIỆN & NAVIGATION
+        // **********************************************
+        const showPage = (pageId) => {
+            document.querySelectorAll('.page').forEach(page => page.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+
+            const headerTitle = document.getElementById(CURRENT_USER_ROLE === 'manager' ? 'pageTitle' : 'empPageTitle');
+            const menuId = CURRENT_USER_ROLE === 'manager' ? 'managerMenu' : 'employeeMenu';
+
+            document.querySelectorAll(`#${menuId} a`).forEach(link => link.classList.remove('active'));
+            const activeLink = document.querySelector(`#${menuId} a[data-page="${pageId}"]`);
+            if (activeLink) {
+                headerTitle.textContent = activeLink.textContent.trim();
+                activeLink.classList.add('active');
+            }
+
+            if (pageId === 'dashboardPage') updateManagerStats();
+            if (pageId === 'teamTasksPage') renderTeamTasks('all');
+            if (pageId === 'employeesPage') renderEmployeeList();
+            if (pageId === 'reportsPage') renderReportsPage();
+            if (pageId === 'approvalsPage') renderApprovals('pending');
+            if (pageId === 'assignTasksPage') populateAssigneeSelect();
+            if (pageId === 'empDashboardPage') updateEmployeeStats();
+            if (pageId === 'empMyTasksPage') renderEmployeeTasks('all');
+            if (pageId === 'empWeeklyPlanPage') renderWeeklyCalendar(WEEK_OFFSET);
+        };
+
+        const handleLogin = (e, role) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            const user = TEAM_MEMBERS.find(m => m.username === username && m.password === password);
+
+            if (!user) {
+                alert('Tên đăng nhập hoặc mật khẩu không đúng. Vui lòng thử lại.');
+                return;
+            }
+
+            if (user.role !== role) {
+                alert(`Tài khoản "${username}" là tài khoản **${user.role === 'manager' ? 'Trưởng phòng' : 'Nhân viên'}**, không phải vai trò bạn chọn. Vui lòng chọn đúng vai trò.`);
+                return;
+            }
+
+            CURRENT_USER = user;
+            CURRENT_USER_ROLE = user.role;
+            document.getElementById('loginScreen').style.display = 'none';
+
+            if (user.role === 'manager') {
+                const managerApp = document.getElementById('managerApp');
+                managerApp.style.display = 'grid';
+                document.getElementById('employeeApp').style.display = 'none';
+                document.getElementById('managerHeaderName').textContent = user.name;
+                document.getElementById('managerHeaderAvatar').textContent = user.initials;
+                showPage('dashboardPage');
+            } else {
+                const employeeApp = document.getElementById('employeeApp');
+                employeeApp.style.display = 'grid';
+                document.getElementById('managerApp').style.display = 'none';
+                document.getElementById('empHeaderName').textContent = user.name;
+                document.getElementById('empHeaderAvatar').textContent = user.initials;
+                document.getElementById('empHeaderPosition').textContent = user.position;
+
+                document.getElementById('profileEmpName').textContent = user.name;
+                document.getElementById('profileEmpPosition').textContent = user.position;
+                document.getElementById('profileEmpAvatar').textContent = user.initials;
+                document.getElementById('profileEmpUsername').value = user.username;
+                document.getElementById('profileEmpEmail').value = user.email;
+                document.getElementById('profileEmpPhone').value = user.phone;
+                document.getElementById('profileEmpTeam').value = getManagerInfo().name;
+                updateEmployeeStats();
+                showPage('empDashboardPage');
+            }
+        };
+
+        const openTaskModal = (taskId) => {
+            const task = TASK_DATA.find(t => t.id === taskId);
+            if (!task) return;
+
+            const modal = document.getElementById('taskModal');
+            document.getElementById('modalTaskTitle').textContent = task.title;
+            document.getElementById('modalTaskDescription').textContent = task.description;
+            document.getElementById('modalTaskStatus').className = `status-badge ${getStatusClass(task.status)}`;
+            document.getElementById('modalTaskStatus').textContent = getStatusBadge(task.status).replace(/<[^>]*>/g, '').trim(); // Remove HTML tags
+            document.getElementById('modalTaskManager').textContent = getManagerInfo().name;
+            document.getElementById('modalTaskAssignee').textContent = task.assigneeName;
+            document.getElementById('modalTaskDueDate').textContent = formatDate(task.dueDate);
+            document.getElementById('modalTaskPriority').textContent = task.priority === 'low' ? 'Thấp' : task.priority === 'medium' ? 'Trung bình' : 'Cao';
+            document.getElementById('modalTaskPriority').className = `priority-${task.priority}`;
+
+            const progressInput = document.getElementById('modalTaskProgress');
+            const progressValueSpan = document.getElementById('progressValue');
+            const modalActions = document.getElementById('modalActions');
+            modalActions.innerHTML = '';
+
+            // Logic cho Trưởng phòng
+            if (CURRENT_USER_ROLE === 'manager') {
+                progressInput.value = task.progress;
+                progressValueSpan.textContent = task.progress;
+                progressInput.disabled = true;
+
+                if (task.status === 'pending_approval') {
+                    const approveBtn = document.createElement('button');
+                    approveBtn.className = 'btn btn-success';
+                    approveBtn.textContent = 'Duyệt Hoàn thành';
+                    approveBtn.onclick = () => handleTaskApproval(taskId, true);
+                    modalActions.appendChild(approveBtn);
+
+                    const rejectBtn = document.createElement('button');
+                    rejectBtn.className = 'btn btn-danger';
+                    rejectBtn.textContent = 'Từ chối (Về Đang thực hiện)';
+                    rejectBtn.onclick = () => handleTaskApproval(taskId, false);
+                    modalActions.appendChild(rejectBtn);
+                } else {
+                    modalActions.innerHTML = '<p style="color:#777;">Không có thao tác duyệt cho trạng thái này.</p>';
+                }
+            } 
+            // Logic cho Nhân viên
+            else { 
+                progressInput.value = task.progress;
+                progressValueSpan.textContent = task.progress;
+
+                if (task.assigneeId === CURRENT_USER.id) {
+                    if (task.status === 'completed' && task.managerApproval) {
+                        progressInput.disabled = true;
+                        modalActions.innerHTML = '<p style="color:var(--success); font-weight:600;">Công việc Đã Hoàn thành & Đã Được Duyệt.</p>';
+                    } else if (task.status === 'pending_approval') {
+                        progressInput.disabled = true;
+                        modalActions.innerHTML = '<p style="color:var(--warning); font-weight:600;">Đang chờ Trưởng phòng duyệt.</p>';
+                    } else {
+                        progressInput.disabled = false;
+                        const updateBtn = document.createElement('button');
+                        updateBtn.className = 'btn btn-primary';
+                        updateBtn.textContent = 'Cập nhật Tiến độ';
+                        updateBtn.onclick = () => handleTaskUpdate(taskId, progressInput.value);
+                        modalActions.appendChild(updateBtn);
+
+                        const completeBtn = document.createElement('button');
+                        completeBtn.className = 'btn btn-success';
+                        completeBtn.textContent = 'Gửi Duyệt Hoàn thành';
+                        completeBtn.style.display = task.progress === 100 ? 'inline-block' : 'none';
+                        completeBtn.id = 'modalCompleteBtn';
+                        completeBtn.onclick = () => handleTaskCompletion(taskId);
+                        modalActions.appendChild(completeBtn);
+
+                        progressInput.oninput = () => {
+                            progressValueSpan.textContent = progressInput.value;
+                            if (parseInt(progressInput.value) === 100) {
+                                completeBtn.style.display = 'inline-block';
+                            } else {
+                                completeBtn.style.display = 'none';
+                            }
+                        };
+                    }
+                } else {
+                    progressInput.disabled = true;
+                    modalActions.innerHTML = '<p style="color:#777;">Bạn không có quyền chỉnh sửa công việc này.</p>';
+                }
+            }
+            modal.style.display = 'flex';
+        };
+
+        // **********************************************
+        // 4. LOGIC CHỨC NĂNG TRƯỞNG PHÒNG
+        // **********************************************
+        const updateManagerStats = () => {
+            const manager = getManagerInfo();
+            const allTasks = TASK_DATA.filter(t => t.assigneeId !== manager.id);
+            const total = allTasks.length;
+            const completed = allTasks.filter(t => t.status === 'completed' && t.managerApproval).length;
+            const overdue = allTasks.filter(t => t.status === 'overdue').length;
+            const pendingApproval = allTasks.filter(t => t.status === 'pending_approval').length;
+
+            document.getElementById('totalTasks').textContent = total;
+            document.getElementById('completedTasks').textContent = completed;
+            document.getElementById('overdueTasks').textContent = overdue;
+            document.getElementById('totalEmployees').textContent = TEAM_MEMBERS.filter(m => m.role === 'employee').length;
+
+            renderApprovalTasksList(allTasks.filter(t => t.status === 'pending_approval'));
+            renderEmployeePerformanceChart();
+        };
+
+        const renderApprovalTasksList = (pendingTasks) => {
+            const list = document.getElementById('approvalTasksList');
+            if (pendingTasks.length === 0) {
+                list.innerHTML = '<p style="color: #777;">Không có công việc nào đang chờ duyệt.</p>';
+                return;
+            }
+            list.innerHTML = pendingTasks.slice(0, 5).map(task => `
+                <div class="approval-item">
+                    <span>${task.title} - ${task.assigneeName}</span>
+                    <button class="btn btn-primary btn-icon" onclick="openTaskModal(${task.id})">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            `).join('');
+            if (pendingTasks.length > 5) {
+                list.innerHTML += `<p class="text-center mt-2" style="font-size: 12px; color: var(--primary); cursor: pointer;" onclick="showPage('approvalsPage')">+ Xem thêm (${pendingTasks.length - 5})</p>`;
+            }
+        };
+        
+        const renderEmployeePerformanceChart = () => {
+             if (employeePerformanceChartInstance) employeePerformanceChartInstance.destroy();
+             const manager = getManagerInfo();
+             const employees = TEAM_MEMBERS.filter(m => m.role === 'employee');
+             const data = employees.map(emp => {
+                 const tasks = TASK_DATA.filter(t => t.assigneeId === emp.id);
+                 const completed = tasks.filter(t => t.status === 'completed' && t.managerApproval).length;
+                 const total = tasks.length;
+                 return total > 0 ? (completed / total) * 100 : 0;
+             });
+             
+             const ctx = document.getElementById('employeePerformanceChart');
+             if (!ctx) return;
+
+             employeePerformanceChartInstance = new Chart(ctx.getContext('2d'), {
+                 type: 'bar',
+                 data: {
+                     labels: employees.map(emp => emp.name),
+                     datasets: [{
+                         label: 'Tỷ lệ Hoàn thành (%)',
+                         data: data,
+                         backgroundColor: data.map(val => val >= 80 ? '#4cc9f0' : val >= 50 ? '#f8961e' : '#f72585'),
+                         borderRadius: 4
+                     }]
+                 },
+                 options: {
+                     responsive: true,
+                     maintainAspectRatio: false,
+                     scales: {
+                         y: {
+                             beginAtZero: true,
+                             max: 100,
+                             title: {
+                                 display: true,
+                                 text: 'Tỷ lệ Hoàn thành (%)'
+                             }
+                         }
+                     }
+                 }
+             });
+        };
+
+        const renderTeamTasks = (filter) => {
+            const manager = getManagerInfo();
+            let filteredTasks = TASK_DATA.filter(t => t.assigneeId !== manager.id);
+            if (filter !== 'all') {
+                filteredTasks = filteredTasks.filter(t => t.status === filter);
+            }
+            
+            const tbody = document.getElementById('teamTasksTable');
+            tbody.innerHTML = '';
+
+            filteredTasks.forEach(task => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${task.id}</td>
+                    <td>${task.title}</td>
+                    <td>${task.assigneeName}</td>
+                    <td>${formatDate(task.dueDate)}</td>
+                    <td class="priority-${task.priority}">${task.priority === 'low' ? 'Thấp' : task.priority === 'medium' ? 'Trung bình' : 'Cao'}</td>
+                    <td><div style="width: 100px; background: #eee; border-radius: 4px;"><div style="width: ${task.progress}%; background: ${task.progress === 100 ? '#4cc9f0' : '#4361ee'}; height: 8px; border-radius: 4px;"></div></div></td>
+                    <td>${getStatusBadge(task.status)}</td>
+                    <td>
+                        <button class="btn btn-primary btn-icon" onclick="openTaskModal(${task.id})"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-success btn-icon" style="margin-left: 5px;" onclick="openEditTaskModal(${task.id})"><i class="fas fa-edit"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.querySelectorAll('#teamTaskTabs button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`#teamTaskTabs button[data-filter="${filter}"]`).classList.add('active');
+            renderTeamTaskDistributionChart(filteredTasks);
+        };
+
+        const renderTeamTaskDistributionChart = (tasks) => {
+            if (teamTaskDistributionChartInstance) teamTaskDistributionChartInstance.destroy();
+
+            const statusCounts = tasks.reduce((acc, task) => {
+                acc[task.status] = (acc[task.status] || 0) + 1;
+                return acc;
+            }, {});
+
+            const labels = ['Đang thực hiện', 'Chờ duyệt', 'Hoàn thành', 'Trễ hạn', 'Chưa bắt đầu'];
+            const data = [
+                statusCounts['inprogress'] || 0,
+                statusCounts['pending_approval'] || 0,
+                statusCounts['completed'] || 0,
+                statusCounts['overdue'] || 0,
+                statusCounts['pending'] || 0
+            ];
+            
+            const ctx = document.getElementById('teamTaskDistributionChart');
+            if (!ctx) return;
+            const ctx2d = ctx.getContext('2d');
+
+            teamTaskDistributionChartInstance = new Chart(ctx2d, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: 'Số lượng Công việc',
+                            data: data,
+                            backgroundColor: [
+                                '#ff8c00', // inprogress
+                                '#673ab7', // pending_approval
+                                '#38761d', // completed
+                                '#a00000', // overdue
+                                '#555' // pending
+                            ],
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        const renderApprovals = (filter) => {
+            const manager = getManagerInfo();
+            const allTasks = TASK_DATA.filter(t => t.assigneeId !== manager.id);
+            let pending = allTasks.filter(t => t.status === 'pending_approval');
+            let approved = allTasks.filter(t => t.status === 'completed' && t.managerApproval);
+
+            document.getElementById('pendingApprovalCount').textContent = pending.length;
+            
+            const pendingList = document.getElementById('pendingApprovalsList');
+            const approvedList = document.getElementById('approvedTasksList');
+            
+            if (filter === 'pending') {
+                approvedList.style.display = 'none';
+                pendingList.style.display = 'block';
+
+                if (pending.length > 0) {
+                    pendingList.innerHTML = pending.map(task => `
+                        <div class="bg-white p-4 rounded-lg shadow-md mt-4 flex justify-between items-center">
+                            <div>
+                                <strong>${task.title}</strong> (${task.assigneeName})<br>
+                                <span style="font-size: 12px; color: #777;">Gửi duyệt: ${formatDate(task.dueDate)} | Tiến độ: ${task.progress}%</span>
+                            </div>
+                            <div>
+                                <button class="btn btn-success btn-icon" onclick="handleTaskApproval(${task.id}, true)" title="Duyệt"><i class="fas fa-check"></i></button>
+                                <button class="btn btn-danger btn-icon" style="margin-left: 5px;" onclick="handleTaskApproval(${task.id}, false)" title="Từ chối/Yêu cầu chỉnh sửa"><i class="fas fa-times"></i></button>
+                            </div>
+                        </div>
+                    `).join('');
+                } else {
+                    pendingList.innerHTML = '<p class="p-4" style="color: #777;">Không có công việc nào đang chờ duyệt.</p>';
+                }
+
+            } else { // filter === 'approved'
+                pendingList.style.display = 'none';
+                approvedList.style.display = 'block';
+                
+                if (approved.length > 0) {
+                    approvedList.innerHTML = approved.map(task => `
+                        <div class="bg-white p-4 rounded-lg shadow-md mt-4 flex justify-between items-center">
+                            <div>
+                                <strong>${task.title}</strong> (${task.assigneeName})<br>
+                                <span style="font-size: 12px; color: var(--success);">Đã duyệt: ${formatDate(task.dueDate)}</span>
+                            </div>
+                            <button class="btn btn-primary btn-icon" onclick="openTaskModal(${task.id})"><i class="fas fa-eye"></i></button>
+                        </div>
+                    `).join('');
+                } else {
+                     approvedList.innerHTML = '<p class="p-4" style="color: #777;">Chưa có công việc nào được duyệt.</p>';
+                }
+            }
+            
+            document.querySelectorAll('#approvalTabs button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`#approvalTabs button[data-filter="${filter}"]`).classList.add('active');
+        };
+
+        const handleAssignTask = (e) => {
+            e.preventDefault();
+            const title = document.getElementById('taskTitle').value;
+            const description = document.getElementById('taskDescription').value;
+            const assigneeId = parseInt(document.getElementById('taskAssignee').value);
+            const priority = document.getElementById('taskPriority').value;
+            const startDate = document.getElementById('taskStartDate').value;
+            const dueDate = document.getElementById('taskDueDate').value;
+
+            const assignee = getUserById(assigneeId);
+            if (!assignee) {
+                alert('Người thực hiện không hợp lệ.');
+                return;
+            }
+            
+            const newTask = {
+                id: ++TASK_ID_COUNTER,
+                title,
+                description,
+                assigneeId,
+                assigneeName: assignee.name,
+                startDate,
+                dueDate,
+                priority,
+                status: 'pending',
+                progress: 0,
+                managerApproval: false
+            };
+
+            TASK_DATA.push(newTask);
+            alert(`Đã giao việc "${title}" cho ${assignee.name}.`);
+            e.target.reset();
+            showPage('teamTasksPage');
+        };
+
+        const populateAssigneeSelect = () => {
+            const select = document.getElementById('taskAssignee');
+            select.innerHTML = '';
+            const employees = TEAM_MEMBERS.filter(m => m.role === 'employee');
+            employees.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.id;
+                option.textContent = `${emp.name} - ${emp.position}`;
+                select.appendChild(option);
+            });
+        };
+
+        const handleTaskApproval = (taskId, approved) => {
+            const task = TASK_DATA.find(t => t.id === taskId);
+            if (!task) return;
+
+            if (approved) {
+                task.status = 'completed';
+                task.managerApproval = true;
+                alert(`Đã duyệt công việc "${task.title}" là Hoàn thành.`);
+            } else {
+                task.status = 'inprogress';
+                task.managerApproval = false;
+                task.progress = 90; // Giả định đưa về 90% để nhân viên biết cần chỉnh sửa
+                alert(`Đã từ chối duyệt công việc "${task.title}". Công việc được đưa về trạng thái Đang thực hiện (90%).`);
+            }
+            
+            document.getElementById('taskModal').style.display = 'none';
+            renderApprovals('pending');
+            updateManagerStats();
+            renderTeamTasks(document.querySelector('#teamTaskTabs button.active').dataset.filter);
+        };
+
+        // START: LOGIC SỬA CÔNG VIỆC
+        const populateEditTaskAssigneeSelect = (currentAssigneeId) => {
+            const select = document.getElementById('editTaskAssignee');
+            select.innerHTML = '';
+            const employees = TEAM_MEMBERS.filter(m => m.role === 'employee');
+            employees.forEach(emp => {
+                const option = document.createElement('option');
+                option.value = emp.id;
+                option.textContent = `${emp.name} - ${emp.position}`;
+                if (emp.id === currentAssigneeId) {
+                    option.selected = true;
+                }
+                select.appendChild(option);
+            });
+        };
+
+        const openEditTaskModal = (taskId) => {
+            const task = TASK_DATA.find(t => t.id === taskId);
+            if (!task) return;
+            
+            document.getElementById('editTaskId').value = task.id;
+            document.getElementById('editTaskTitle').value = task.title;
+            document.getElementById('editTaskDescription').value = task.description;
+            document.getElementById('editTaskPriority').value = task.priority;
+            document.getElementById('editTaskStartDate').value = task.startDate;
+            document.getElementById('editTaskDueDate').value = task.dueDate;
+            
+            populateEditTaskAssigneeSelect(task.assigneeId);
+
+            document.getElementById('editTaskModal').style.display = 'flex';
+        };
+
+        const handleEditTask = (e) => {
+            e.preventDefault();
+            const taskId = parseInt(document.getElementById('editTaskId').value);
+            const title = document.getElementById('editTaskTitle').value;
+            const description = document.getElementById('editTaskDescription').value;
+            const assigneeId = parseInt(document.getElementById('editTaskAssignee').value);
+            const priority = document.getElementById('editTaskPriority').value;
+            const startDate = document.getElementById('editTaskStartDate').value;
+            const dueDate = document.getElementById('editTaskDueDate').value;
+
+            const taskIndex = TASK_DATA.findIndex(t => t.id === taskId);
+            if (taskIndex === -1) {
+                alert('Không tìm thấy công việc.');
+                return;
+            }
+            
+            const assignee = getUserById(assigneeId);
+            if (!assignee) {
+                alert('Người thực hiện không hợp lệ.');
+                return;
+            }
+            
+            const originalTask = TASK_DATA[taskIndex];
+            const originalAssigneeId = originalTask.assigneeId;
+            const originalDueDate = originalTask.dueDate;
+            const originalStatus = originalTask.status;
+
+            // Update task properties
+            originalTask.title = title;
+            originalTask.description = description;
+            originalTask.assigneeId = assigneeId;
+            originalTask.assigneeName = assignee.name;
+            originalTask.priority = priority;
+            originalTask.startDate = startDate;
+            originalTask.dueDate = dueDate;
+            
+            // Logic: Nếu thay đổi người thực hiện, trạng thái đang chờ duyệt hoặc hoàn thành cần được reset về inprogress
+            if (assigneeId !== originalAssigneeId || dueDate !== originalDueDate) {
+                if (['pending_approval', 'completed'].includes(originalStatus)) {
+                    originalTask.status = 'inprogress';
+                    originalTask.progress = 50; 
+                    originalTask.managerApproval = false;
+                    alert(`Đã cập nhật công việc. Do có thay đổi, trạng thái được đưa về Đang thực hiện (50%).`);
+                }
+            }
+
+
+            alert(`Đã cập nhật công việc "${title}".`);
+            document.getElementById('editTaskModal').style.display = 'none';
+            
+            // Re-render the affected pages
+            renderTeamTasks(document.querySelector('#teamTaskTabs button.active').dataset.filter);
+            updateManagerStats(); 
+            renderReportsPage(); 
+        };
+        // END: LOGIC SỬA CÔNG VIỆC
+
+        // **********************************************
+        // 5. LOGIC QUẢN LÝ NHÂN VIÊN (MANAGER)
+        // **********************************************
+        const renderEmployeeList = () => {
+            const employeeList = document.getElementById('employeeList');
+            employeeList.innerHTML = '';
+            
+            TEAM_MEMBERS.filter(m => m.role === 'employee').forEach(emp => {
+                const card = document.createElement('div');
+                card.className = 'employee-card';
+                card.innerHTML = `
+                    <div class="user-avatar employee-avatar">${emp.initials}</div>
+                    <div class="employee-name">${emp.name}</div>
+                    <div class="employee-position">${emp.position}</div>
+                    <div class="employee-actions">
+                        <button class="btn btn-primary btn-icon" onclick="openEmployeeModal(${emp.id})"><i class="fas fa-edit"></i> Sửa</button>
+                        <button class="btn btn-danger btn-icon" onclick="deleteEmployee(${emp.id})"><i class="fas fa-trash"></i> Xóa</button>
+                    </div>
+                `;
+                employeeList.appendChild(card);
+            });
+        };
+
+        const deleteEmployee = (empId) => {
+            const empIndex = TEAM_MEMBERS.findIndex(m => m.id === empId);
+            if (empIndex === -1) return;
+
+            const empName = TEAM_MEMBERS[empIndex].name;
+
+            if (confirm(`Bạn có chắc chắn muốn xóa nhân viên "${empName}" và tất cả công việc của họ?`)) {
+                // Xóa nhân viên
+                TEAM_MEMBERS.splice(empIndex, 1);
+                
+                // Xóa công việc của nhân viên này
+                TASK_DATA = TASK_DATA.filter(t => t.assigneeId !== empId);
+                
+                alert(`Đã xóa nhân viên ${empName} và các công việc liên quan.`);
+                renderEmployeeList();
+                updateManagerStats(); 
+            }
+        };
+
+        const openEmployeeModal = (empId) => {
+            const modal = document.getElementById('employeeModal');
+            const title = document.getElementById('employeeModalTitle');
+            const saveBtn = document.getElementById('saveEmployeeBtn');
+            const empIdInput = document.getElementById('empId');
+            const empPasswordInput = document.getElementById('empPassword');
+            
+            const isNew = empId === null;
+            title.textContent = isNew ? 'Thêm Nhân viên Mới' : 'Cập nhật Thông tin Nhân viên';
+            saveBtn.textContent = isNew ? 'Thêm Nhân viên' : 'Lưu Thay đổi';
+            empIdInput.value = empId;
+            empPasswordInput.required = isNew;
+
+            if (!isNew) {
+                const emp = TEAM_MEMBERS.find(m => m.id === empId);
+                document.getElementById('empName').value = emp.name;
+                document.getElementById('empUsername').value = emp.username;
+                document.getElementById('empPosition').value = emp.position;
+                document.getElementById('empEmail').value = emp.email;
+                document.getElementById('empPhone').value = emp.phone;
+                empPasswordInput.value = '';
+            } else {
+                document.getElementById('employeeForm').reset();
+            }
+
+            modal.style.display = 'flex';
+        };
+
+        const handleEmployeeForm = (e) => {
+            e.preventDefault();
+            const id = document.getElementById('empId').value;
+            const name = document.getElementById('empName').value;
+            const username = document.getElementById('empUsername').value;
+            const password = document.getElementById('empPassword').value;
+            const position = document.getElementById('empPosition').value;
+            const email = document.getElementById('empEmail').value;
+            const phone = document.getElementById('empPhone').value;
+
+            if (id) {
+                const emp = TEAM_MEMBERS.find(m => m.id === parseInt(id));
+                if (emp) {
+                    emp.name = name;
+                    emp.initials = name.split(' ').map(n => n[0]).join('').toUpperCase();
+                    emp.username = username;
+                    if (password) emp.password = password;
+                    emp.position = position;
+                    emp.email = email;
+                    emp.phone = phone;
+                    alert(`Đã cập nhật thông tin nhân viên ${name}.`);
+                }
+            } else {
+                if (!password) {
+                    alert('Vui lòng nhập mật khẩu cho nhân viên mới.');
+                    return;
+                }
+                const newId = Math.max(...TEAM_MEMBERS.map(m => m.id)) + 1;
+                const newEmployee = {
+                    id: newId,
+                    name,
+                    initials: name.split(' ').map(n => n[0]).join('').toUpperCase(),
+                    role: 'employee',
+                    position,
+                    email,
+                    phone,
+                    username,
+                    password
+                };
+                TEAM_MEMBERS.push(newEmployee);
+                alert(`Đã thêm nhân viên mới: ${name}.`);
+            }
+
+            document.getElementById('employeeModal').style.display = 'none';
+            renderEmployeeList();
+            updateManagerStats(); 
+        };
+
+        // **********************************************
+        // 6. LOGIC BÁO CÁO (MANAGER)
+        // **********************************************
+        const getReportData = () => {
+            const manager = getManagerInfo();
+            const employeeStats = TEAM_MEMBERS.filter(m => m.role === 'employee').map(emp => {
+                const empTasks = TASK_DATA.filter(t => t.assigneeId === emp.id);
+                const total = empTasks.length;
+                const completed = empTasks.filter(t => t.status === 'completed' && t.managerApproval).length;
+                const overdue = empTasks.filter(t => t.status === 'overdue').length;
+                const completionRate = total > 0 ? ((completed / total) * 100).toFixed(0) : 0;
+                
+                return {
+                    id: emp.id,
+                    name: emp.name,
+                    total,
+                    completed,
+                    overdue,
+                    completionRate: parseFloat(completionRate)
+                };
+            });
+
+            const allEmployeeTasks = TASK_DATA.filter(task => task.assigneeId !== manager.id);
+            const totalDepartmentTasks = allEmployeeTasks.length;
+            const completedDepartmentTasks = allEmployeeTasks.filter(task => task.status === 'completed' && task.managerApproval).length;
+            const overdueDepartmentTasks = allEmployeeTasks.filter(task => task.status === 'overdue').length;
+            const inProgressDepartmentTasks = allEmployeeTasks.filter(t => ['inprogress', 'pending_approval', 'pending'].includes(t.status) || (t.status === 'completed' && !t.managerApproval)).length;
+
+            return {
+                employeeStats,
+                departmentSummary: {
+                    total: totalDepartmentTasks,
+                    completed: completedDepartmentTasks,
+                    overdue: overdueDepartmentTasks,
+                    inProgress: inProgressDepartmentTasks
+                },
+                priorityDistribution: allEmployeeTasks.reduce((acc, task) => {
+                    acc[task.priority] = (acc[task.priority] || 0) + 1;
+                    return acc;
+                }, {})
+            };
+        };
+
+        const renderReportsPage = () => {
+            const reportData = getReportData();
+            renderReportSummaryStats(reportData.departmentSummary);
+            renderDepartmentPerformanceChart(reportData.departmentSummary);
+            renderTaskDistributionChart(reportData.priorityDistribution);
+            renderPerformanceTable(reportData.employeeStats);
+        };
+
+        const renderReportSummaryStats = (summary) => {
+            const container = document.getElementById('reportSummaryStats');
+            const totalTasks = summary.total;
+            const completionRate = totalTasks > 0 ? ((summary.completed / totalTasks) * 100).toFixed(1) : 0;
+            const inProgressRate = totalTasks > 0 ? ((summary.inProgress / totalTasks) * 100).toFixed(1) : 0;
+            const overdueRate = totalTasks > 0 ? ((summary.overdue / totalTasks) * 100).toFixed(1) : 0;
+
+            container.innerHTML = `
+                <div class="stat-card stat-card-success">
+                    <div class="stat-card-title">Tỷ lệ Hoàn thành (Đã duyệt)</div>
+                    <div class="stat-card-value">${completionRate}%</div>
+                </div>
+                <div class="stat-card stat-card-primary">
+                    <div class="stat-card-title">Đang thực hiện/Chờ duyệt</div>
+                    <div class="stat-card-value">${summary.inProgress} (${inProgressRate}%)</div>
+                </div>
+                <div class="stat-card stat-card-danger">
+                    <div class="stat-card-title">Tỷ lệ Trễ hạn</div>
+                    <div class="stat-card-value">${summary.overdue} (${overdueRate}%)</div>
+                </div>
+                <div class="stat-card stat-card-info">
+                    <div class="stat-card-title">Tổng CV Giao</div>
+                    <div class="stat-card-value">${summary.total}</div>
+                </div>
+            `;
+        };
+
+        const renderDepartmentPerformanceChart = (departmentSummary) => {
+            if (departmentPerformanceChartInstance) departmentPerformanceChartInstance.destroy();
+            const totalTasks = departmentSummary.total;
+            if (totalTasks === 0) return;
+
+            const ctx = document.getElementById('departmentPerformanceChart');
+            if (!ctx) return;
+            const ctx2d = ctx.getContext('2d');
+
+            departmentPerformanceChartInstance = new Chart(ctx2d, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Hoàn thành (Đã duyệt)', 'Đang tiến hành/Chờ duyệt/Chưa bắt đầu', 'Trễ hạn'],
+                    datasets: [{
+                        data: [
+                            departmentSummary.completed,
+                            departmentSummary.inProgress,
+                            departmentSummary.overdue
+                        ],
+                        backgroundColor: [
+                            '#4cc9f0',
+                            '#4361ee',
+                            '#f72585',
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ` (${((context.parsed / departmentSummary.total) * 100).toFixed(1)}%)`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        const renderTaskDistributionChart = (priorityDistribution) => {
+            if (taskDistributionChartInstance) taskDistributionChartInstance.destroy();
+            
+            const ctx = document.getElementById('taskDistributionChart');
+            if (!ctx) return;
+            const ctx2d = ctx.getContext('2d');
+
+            const labels = ['Thấp', 'Trung bình', 'Cao'];
+            const totalTasks = Object.values(priorityDistribution).reduce((sum, count) => sum + count, 0);
+            const data = [
+                priorityDistribution.low || 0,
+                priorityDistribution.medium || 0,
+                priorityDistribution.high || 0
+            ];
+
+            if (totalTasks === 0) return; 
+
+            taskDistributionChartInstance = new Chart(ctx2d, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: [
+                            '#4895ef',
+                            '#f8961e',
+                            '#f72585',
+                        ],
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed !== null) {
+                                        label += context.parsed + ` (${((context.parsed / totalTasks) * 100).toFixed(1)}%)`;
+                                    }
+                                    return label;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        };
+
+        const renderPerformanceTable = (employeeStats) => {
+            const tbody = document.getElementById('performanceTable');
+            tbody.innerHTML = '';
+
+            employeeStats.sort((a, b) => b.completionRate - a.completionRate).forEach(stat => {
+                const rateColor = stat.completionRate >= 80 ? 'var(--success)' : stat.completionRate >= 50 ? 'var(--warning)' : 'var(--danger)';
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${stat.name}</td>
+                    <td>${stat.total}</td>
+                    <td>${stat.completed}</td>
+                    <td>${stat.overdue}</td>
+                    <td style="color: ${rateColor}; font-weight: 600;">${stat.completionRate}%</td>
+                `;
+                tbody.appendChild(row);
+            });
+        };
+
+
+        // **********************************************
+        // 7. LOGIC NHÂN VIÊN
+        // **********************************************
+        const updateEmployeeStats = () => {
+            if (!CURRENT_USER) return;
+            const empTasks = TASK_DATA.filter(t => t.assigneeId === CURRENT_USER.id);
+            const total = empTasks.length;
+            const completed = empTasks.filter(t => t.status === 'completed' && t.managerApproval).length;
+            const overdue = empTasks.filter(t => t.status === 'overdue').length;
+            const inprogress = empTasks.filter(t => t.status === 'inprogress' || t.status === 'pending_approval').length;
+            
+            document.getElementById('empTotalTasks').textContent = total;
+            document.getElementById('empCompletedTasks').textContent = completed;
+            document.getElementById('empOverdueTasks').textContent = overdue;
+            document.getElementById('empInProgressTasks').textContent = inprogress;
+
+            const completionRate = total > 0 ? ((completed / total) * 100).toFixed(0) : 0;
+            const profilePerformance = document.getElementById('profileEmpPerformance');
+            profilePerformance.value = `${completionRate}%`;
+            profilePerformance.style.color = completionRate >= 80 ? 'var(--success)' : completionRate >= 50 ? 'var(--warning)' : 'var(--danger)';
+
+            const recentTasks = empTasks.sort((a, b) => new Date(b.startDate) - new Date(a.startDate)).slice(0, 5);
+            const listHtml = recentTasks.map(t => 
+                `<div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee;">
+                    <span>${t.title} (${formatDate(t.dueDate)})</span>
+                    ${getStatusBadge(t.status)}
+                </div>`
+            ).join('');
+            document.getElementById('empRecentTasks').innerHTML = listHtml || '<p style="color: #777;">Không có công việc gần đây.</p>';
+        };
+
+        const renderEmployeeTasks = (filter) => {
+            if (!CURRENT_USER) return;
+            let filteredTasks = TASK_DATA.filter(t => t.assigneeId === CURRENT_USER.id);
+            
+            if (filter !== 'all') {
+                filteredTasks = filteredTasks.filter(t => t.status === filter);
+            }
+            
+            const tbody = document.getElementById('empMyTasksTable');
+            tbody.innerHTML = '';
+
+            filteredTasks.forEach(task => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${task.title}</td>
+                    <td>${formatDate(task.dueDate)}</td>
+                    <td class="priority-${task.priority}">${task.priority === 'low' ? 'Thấp' : task.priority === 'medium' ? 'Trung bình' : 'Cao'}</td>
+                    <td><div style="width: 100px; background: #eee; border-radius: 4px;"><div style="width: ${task.progress}%; background: ${task.progress === 100 ? '#4cc9f0' : '#4361ee'}; height: 8px; border-radius: 4px;"></div></div></td>
+                    <td>${getStatusBadge(task.status)}</td>
+                    <td><button class="btn btn-primary btn-icon" onclick="openTaskModal(${task.id})"><i class="fas fa-eye"></i></button></td>
+                `;
+                tbody.appendChild(row);
+            });
+            
+            document.querySelectorAll('#empMyTaskTabs button').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`#empMyTaskTabs button[data-filter="${filter}"]`).classList.add('active');
+        };
+
+        const handleTaskUpdate = (taskId, newProgress) => {
+            const task = TASK_DATA.find(t => t.id === taskId);
+            if (!task) return;
+
+            task.progress = parseInt(newProgress);
+            task.status = 'inprogress';
+
+            alert(`Đã cập nhật tiến độ công việc "${task.title}" lên ${newProgress}%.`);
+            document.getElementById('taskModal').style.display = 'none';
+            renderEmployeeTasks(document.querySelector('#empMyTaskTabs button.active').dataset.filter);
+            updateEmployeeStats();
+            renderWeeklyCalendar(WEEK_OFFSET);
+        };
+
+        const handleTaskCompletion = (taskId) => {
+            const task = TASK_DATA.find(t => t.id === taskId);
+            if (!task) return;
+            
+            task.progress = 100;
+            task.status = 'pending_approval';
+
+            alert(`Đã gửi công việc "${task.title}" chờ Trưởng phòng duyệt hoàn thành.`);
+            document.getElementById('taskModal').style.display = 'none';
+            renderEmployeeTasks('pending_approval');
+            updateEmployeeStats();
+        };
+
+        let PLAN_TASK_ID_COUNTER = 1000;
+        const handlePlanTask = (e) => {
+            e.preventDefault();
+            const title = document.getElementById('planTitle').value;
+            const description = document.getElementById('planDescription').value;
+            const startDate = document.getElementById('planStartDate').value;
+            const dueDate = document.getElementById('planDueDate').value;
+
+             if (!CURRENT_USER) return;
+             
+            const newPlanTask = {
+                id: ++PLAN_TASK_ID_COUNTER,
+                title,
+                description,
+                assigneeId: CURRENT_USER.id,
+                assigneeName: CURRENT_USER.name,
+                startDate,
+                dueDate,
+                priority: 'low', // Mặc định là thấp cho kế hoạch cá nhân
+                status: 'pending', 
+                progress: 0,
+                managerApproval: true // Coi như tự phê duyệt
+            };
+
+            TASK_DATA.push(newPlanTask);
+            alert(`Đã thêm kế hoạch cá nhân: "${title}".`);
+            document.getElementById('planTaskForm').reset();
+            document.getElementById('planTaskModal').style.display = 'none';
+            renderWeeklyCalendar(WEEK_OFFSET);
+        };
+
+        const getStartOfWeek = (offset) => {
+            const today = new Date();
+            const day = today.getDay(); 
+            const diff = today.getDate() - day + (day === 0 ? -6 : 1); // Điều chỉnh sang Thứ Hai
+            let monday = new Date(today.setDate(diff));
+            monday.setDate(monday.getDate() + (offset * 7));
+            return monday;
+        };
+
+        const renderWeeklyCalendar = (offset) => {
+            const startOfWeek = getStartOfWeek(offset);
+            const calendarGrid = document.getElementById('weeklyCalendar');
+            const currentWeekDisplay = document.getElementById('currentWeekDisplay');
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+            currentWeekDisplay.textContent = `Tuần hiện tại: ${formatDate(startOfWeek.toISOString().split('T')[0])} - ${formatDate(endOfWeek.toISOString().split('T')[0])}`;
+
+            // Xóa các ngày cũ (giữ lại 7 header)
+            while (calendarGrid.children.length > 7) {
+                calendarGrid.removeChild(calendarGrid.lastChild);
+            }
+            
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (let i = 0; i < 7; i++) {
+                const date = new Date(startOfWeek);
+                date.setDate(startOfWeek.getDate() + i);
+                const dateString = date.toISOString().split('T')[0];
+                const isToday = date.getTime() === today.getTime();
+
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+
+                const dateLabel = document.createElement('div');
+                dateLabel.className = 'day-label' + (isToday ? ' today' : '');
+                dateLabel.textContent = date.getDate();
+                dayDiv.appendChild(dateLabel);
+
+                const dailyTasks = TASK_DATA.filter(t => 
+                    t.assigneeId === CURRENT_USER.id && 
+                    t.dueDate === dateString 
+                );
+
+                dailyTasks.forEach(task => {
+                    const taskDiv = document.createElement('div');
+                    taskDiv.className = 'weekly-task';
+                    taskDiv.style.backgroundColor = task.status === 'completed' ? '#4cc9f0' : task.status === 'overdue' ? '#f72585' : 'var(--primary)';
+                    taskDiv.textContent = task.title;
+                    taskDiv.title = task.title + ' - ' + task.status;
+                    taskDiv.onclick = () => openTaskModal(task.id); 
+                    dayDiv.appendChild(taskDiv);
+                });
+
+                calendarGrid.appendChild(dayDiv);
+            }
+        };
+
+
+        // **********************************************
+        // 8. KHỞI TẠO VÀ XỬ LÝ SỰ KIỆN
+        // **********************************************
+        document.addEventListener('DOMContentLoaded', () => {
+            // Chọn vai trò mặc định
+            document.querySelectorAll('.role-card').forEach(card => {
+                card.addEventListener('click', () => {
+                    document.querySelectorAll('.role-card').forEach(c => c.classList.remove('active-role'));
+                    card.classList.add('active-role');
+                    CURRENT_USER_ROLE = card.dataset.role;
+                    document.getElementById('username').value = CURRENT_USER_ROLE === 'manager' ? 'manager' : 'user';
+                });
+            });
+
+            // Xử lý đăng nhập
+            document.getElementById('loginForm').addEventListener('submit', (e) => {
+                handleLogin(e, CURRENT_USER_ROLE);
+            });
+
+            // Xử lý chuyển trang trong Manager/Employee
+            document.querySelectorAll('.sidebar-nav a').forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showPage(link.dataset.page);
+                });
+            });
+
+            const logout = (e) => {
+                e.preventDefault();
+                const managerApp = document.getElementById('managerApp');
+                const employeeApp = document.getElementById('employeeApp');
+                const loginScreen = document.getElementById('loginScreen');
+
+                managerApp.style.display = 'none';
+                employeeApp.style.display = 'none';
+                loginScreen.style.display = 'flex';
+                loginScreen.style.minHeight = '100vh';
+                document.getElementById('username').value = 'user';
+                document.getElementById('password').value = '123';
+                CURRENT_USER = null;
+                CURRENT_USER_ROLE = 'employee';
+            }
+
+            document.getElementById('logoutBtn').addEventListener('click', logout);
+            document.getElementById('empLogoutBtn').addEventListener('click', logout);
+
+            document.getElementById('teamTaskTabs').addEventListener('click', (e) => {
+                 if (e.target.tagName === 'BUTTON') {
+                     renderTeamTasks(e.target.dataset.filter);
+                 }
+            });
+
+            document.getElementById('approvalTabs').addEventListener('click', (e) => {
+                 if (e.target.tagName === 'BUTTON') {
+                     renderApprovals(e.target.dataset.filter);
+                 }
+            });
+
+            document.getElementById('assignTaskForm').addEventListener('submit', handleAssignTask);
+
+            // Gắn sự kiện cho form Sửa Công việc
+            document.getElementById('editTaskForm').addEventListener('submit', handleEditTask);
+
+            document.getElementById('addEmployeeBtn').addEventListener('click', () => {
+                 openEmployeeModal(null);
+            });
+            
+            document.getElementById('employeeForm').addEventListener('submit', handleEmployeeForm);
+
+            document.getElementById('empMyTaskTabs').addEventListener('click', (e) => {
+                 if (e.target.tagName === 'BUTTON') {
+                     renderEmployeeTasks(e.target.dataset.filter);
+                 }
+            });
+            
+            document.getElementById('addPlanTaskBtn').addEventListener('click', () => {
+                 document.getElementById('planTaskModal').style.display = 'flex';
+            });
+            
+            document.getElementById('planTaskForm').addEventListener('submit', handlePlanTask);
+            
+            document.getElementById('prevWeekBtn').addEventListener('click', () => { WEEK_OFFSET--; renderWeeklyCalendar(WEEK_OFFSET); });
+            document.getElementById('nextWeekBtn').addEventListener('click', () => { WEEK_OFFSET++; renderWeeklyCalendar(WEEK_OFFSET); });
+        });
+    </script>
+</body>
+</html>
